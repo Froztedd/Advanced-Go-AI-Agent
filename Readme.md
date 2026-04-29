@@ -1,106 +1,92 @@
-# Advanced Go AI Agent
+# go-arena
 
-An AI agent for playing the game of Go (5x5 board) using heuristic evaluation and minimax search with alpha-beta pruning.
+A 5x5 Go arena with multiple AI agents (random, greedy, minimax, alpha-beta, AlphaZero).
 
-## Overview
+Phase 2 ships a playable web demo: pick a color, pick an opponent, watch stones drop on a wood-grain board with live AI moves. Full README rewrite lands in Phase 5.
 
-This project implements an AI for the game of Go using a negamax algorithm (variation of minimax) with alpha-beta pruning. The agent uses a combination of heuristic evaluation metrics to determine optimal moves, including:
+## Status
 
-- Liberty count (open adjacent points)
-- Capture potential
-- Stone connections
-- Territory control
-- Board position (center vs edge vs corner positioning)
+- [x] **Phase 1** — Engine, 5 agents, CLI, 65 tests, 96% coverage, regression test against legacy.
+- [x] **Phase 2** — FastAPI backend + React/TypeScript/Tailwind/GSAP frontend. Playable end to end.
+- [ ] Phase 3 — AlphaZero-lite (PyTorch + MCTS, self-play training).
+- [ ] Phase 4 — Round-robin tournament + Elo leaderboard.
+- [ ] Phase 5 — Polish, blog post, deploy.
 
-The implementation includes specialized logic for the opening game (first few moves) and a time-controlled search to ensure moves are made within the allocated time limit.
+## Play it locally
 
-## Features
+You need Python 3.11+ and Node 18+. Both backend deps and the FastAPI server are already on most Python setups; install if missing:
 
-- **Negamax search with alpha-beta pruning**: For efficient search of the game tree
-- **Iterative deepening**: To handle time constraints effectively
-- **Heuristic evaluation**: Comprehensive board evaluation using multiple weighted factors
-- **Early game strategy**: Special logic for opening moves
-- **Move sorting**: Optimization to improve alpha-beta pruning efficiency
-- **Liberty detection**: Accurate tracking of stone liberties for tactical decisions
-
-## Code Structure
-
-The code is organized into three main components:
-
-1. **GO class extensions**: Additional helper methods for the GO class to detect liberties, allies, and empty spaces
-2. **AdvancedGoAgent class**: Main AI implementation with:
-   - Move selection logic
-   - Board evaluation
-   - Search algorithm implementation
-   - Early game strategies
-
-## How It Works
-
-The agent works as follows:
-
-1. **Initialization**: Set up the agent with configuration parameters including search depth and evaluation weights
-2. **Move Selection**:
-   - For early game (first 6 moves), use predefined opening strategies
-   - For mid/late game, use negamax search with iterative deepening
-3. **Move Evaluation**:
-   - Generates possible moves and sorts them by heuristic value
-   - Performs alpha-beta search to the specified depth (or until time runs out)
-   - Returns the best move found or "PASS" if no good moves are available
-
-The evaluation function considers:
-- Number of stones of each color
-- Liberty count for stone groups
-- Captures and capture potential
-- Board position (center control vs edges)
-- Stone connections
-
-## Usage
-
-The agent can be used in a Go game framework that provides the board state and expects a move in return:
-
-```python
-from go_agent import AdvancedGoAgent
-
-# Initialize the game state
-go = GO(5)  # 5x5 board
-go.set_board(piece_type, previous_board, board)
-
-# Create the agent
-player = AdvancedGoAgent()
-
-# Get the best move
-action = player.get_move(go, piece_type)
+```
+pip install fastapi uvicorn pydantic
+cd web && npm install && cd ..
 ```
 
-The agent interfaces with the game through:
-- `readInput()`: Reads the current game state
-- `writeOutput()`: Returns the selected move
+Then run both servers (one terminal):
 
-## Parameters
+```
+./scripts/dev.sh
+```
 
-The agent behavior can be tuned by adjusting:
+Or in two terminals:
 
-- `max_depth`: Maximum search depth (default: 4)
-- `time_limit`: Maximum thinking time in seconds (default: 9.5)
-- Evaluation weights in the `weights` dictionary:
-  - `liberty`: Value of each liberty point
-  - `connection`: Value of connected stones
-  - `territory`: Value of controlled territory
-  - `capture`: Value of capturing opponent stones
-  - `center`: Value of controlling center positions
-  - `edge`: Value of edge positions
-  - `corner`: Value of corner positions
+```
+# terminal 1 — API on :8000
+uvicorn api.main:app --reload --port 8000
 
-## Requirements
+# terminal 2 — frontend on :5173
+cd web && npm run dev
+```
 
-- Python 3.x
-- Go game implementation with the expected interface (`GO` class)
+Open **http://localhost:5173** and play.
 
-## Future Improvements
+## Backend CLI (no browser)
 
-Potential enhancements include:
-- Machine learning for parameter tuning
-- Pattern recognition for common Go situations
-- Endgame optimization
-- Transposition tables for search efficiency
-- Support for larger board sizes
+```
+pip install -e .[dev]
+python -m go_arena agents
+python -m go_arena play --black=alphabeta --white=greedy --time=2
+pytest
+```
+
+## The five agents
+
+| Name | Algorithm | Notes |
+| --- | --- | --- |
+| `random` | Uniform random over legal placements | Passes when no placement is legal. |
+| `greedy` | One-ply heuristic: capture, liberty, center, connection | No search. |
+| `minimax` | Depth-2 plain minimax (no alpha-beta) | Material + liberty leaf eval. |
+| `alphabeta` | Negamax + alpha-beta + iterative deepening | Default. Improved variant of the original CSCI 561 agent: depth 4, top-15/10 move pruning, weighted leaf eval. |
+| `alphabeta-legacy` | Same algorithm | Byte-for-byte parity with the original submission: depth 3, top-8/5 pruning, original quirks preserved. Used by the regression test. |
+
+## Repo layout
+
+```
+go_arena/        # Python: engine, agents, tournament runner, CLI
+api/             # FastAPI app: /agents, /games, /games/{id}/move, /resign
+web/             # Vite + React + TypeScript + Tailwind + GSAP frontend
+scripts/dev.sh   # Run backend + frontend together
+tests/           # 65 tests covering engine, agents, regression, perf
+legacy/stage1/   # Untouched CSCI 561 submission, kept for diffing
+FINDINGS.md      # Phase 0 analysis of the legacy code and refactor plan
+```
+
+## API surface
+
+| Method | Path                     | Purpose                                          |
+| ------ | ------------------------ | ------------------------------------------------ |
+| GET    | `/health`                | Liveness probe.                                  |
+| GET    | `/agents`                | Registered agents with labels and descriptions.  |
+| POST   | `/games`                 | Start a new game; body: `{human_color, agent, time_limit, board_size}`. |
+| GET    | `/games/{id}`            | Snapshot: board, legal moves, captures, score.   |
+| POST   | `/games/{id}/move`       | Play a human move (`"PASS"` or `"r,c"`); returns the post-AI-response state. |
+| POST   | `/games/{id}/resign`     | Concede the game.                                |
+
+OpenAPI docs at `http://localhost:8000/docs` once the backend is running.
+
+## Why two scoring functions
+
+`go_arena.engine.rules.score_area` is Chinese / Tromp-Taylor area scoring (stones + surrounded empties + komi for white). It is the default everywhere in new code. `score_stone_count` matches the legacy host's stone-only scoring exactly and is used by the regression test for parity.
+
+## Why `simple_ko_mode`
+
+The new engine enforces full positional superko by default (the proper rule). The legacy CSCI 561 host enforced only "simple ko" (a one-step-back board comparison after a capture). The regression test sets `Board(simple_ko_mode=True)` so legacy moves replay legally; production play uses superko.

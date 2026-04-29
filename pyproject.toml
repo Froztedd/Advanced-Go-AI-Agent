@@ -1,0 +1,73 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "go-arena"
+version = "0.1.0"
+description = "A 5x5 Go arena with multiple AI agents (random, greedy, minimax, alpha-beta, AlphaZero)."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "Charan Kumar" }]
+dependencies = [
+    "numpy>=1.26",
+    "click>=8.1",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-cov>=5.0",
+    "ruff>=0.5",
+    "mypy>=1.10",
+]
+
+[project.scripts]
+go-arena = "go_arena.__main__:cli"
+
+[tool.setuptools.packages.find]
+include = ["go_arena*"]
+exclude = ["legacy*", "tests*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = [
+    "E", "F", "W", "I", "B", "UP", "SIM", "RUF",
+]
+ignore = [
+    "E501",  # line length is enforced by formatter
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["B011"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+files = ["go_arena/engine", "go_arena/agents"]
+warn_unused_configs = true
+disallow_untyped_decorators = false
+
+[[tool.mypy.overrides]]
+module = ["click", "numpy"]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra --strict-markers"
+
+[tool.coverage.run]
+source = ["go_arena"]
+omit = ["go_arena/__main__.py"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "raise NotImplementedError",
+    "if TYPE_CHECKING:",
+    "\\.\\.\\.",
+]

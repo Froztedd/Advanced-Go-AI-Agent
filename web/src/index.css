@@ -1,0 +1,38 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@500;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
+}
+
+body {
+  background:
+    radial-gradient(ellipse 80% 50% at 50% -20%, rgba(168, 122, 53, 0.18), transparent 60%),
+    radial-gradient(ellipse 60% 50% at 90% 110%, rgba(108, 75, 168, 0.15), transparent 60%),
+    #0d0f12;
+  color: #e7eaf0;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+h1, h2, h3, .font-display {
+  font-family: 'Playfair Display', ui-serif, Georgia, serif;
+  letter-spacing: -0.02em;
+}
+
+button {
+  font-family: inherit;
+}
+
+/* Hide default focus outline; use ring instead via Tailwind. */
+button:focus { outline: none; }
